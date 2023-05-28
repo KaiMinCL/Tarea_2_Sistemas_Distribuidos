@@ -21,7 +21,7 @@ type Cliente struct {
 	Ocupacion            string             `bson:"ocupacion" json:"ocupacion"`
 }
 
-type Billeteras struct {
+type Billetera struct {
 	Id         primitive.ObjectID `bson:"_id" json:"id"`
 	NroCliente string             `bson:"nro_cliente" json:"nro_cliente"`
 	Saldo      string             `bson:"slado" json:"saldo"`
@@ -30,7 +30,7 @@ type Billeteras struct {
 	Activo     string             `bson:"activo" json:"activo"`
 }
 
-type Movimientos struct {
+type Movimiento struct {
 	Id          primitive.ObjectID `bson:"_id" json:"id"`
 	NroCliente  string             `bson:"nro_cliente" json:"nro_cliente"`
 	Monto       string             `bson:"monto" json:"monto"`
@@ -66,4 +66,8 @@ type ParametroGiro struct {
 	NroCliente string `bson:"nro_cliente" json:"nro_cliente"`
 	Monto      string `bson:"monto" json:"monto"`
 	Divisa     string `bson:"divisa" json:"divisa"`
+}
+
+type Response struct {
+	Estado string `json:"estado"`
 }

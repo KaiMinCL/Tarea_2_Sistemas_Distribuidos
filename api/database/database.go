@@ -29,44 +29,53 @@ func getDatabaseCollection(collectionName string) *mongo.Collection {
 		panic(err)
 	}
 
-	collection := client.Database("banco").Collection(collectionName)
+	collection := client.Database("TrustBank").Collection(collectionName)
 
 	return collection
 }
 
-func GetCliente(param_cliente models.ParametroCliente) (models.Cliente, error) {
+func GetClient(param_cliente models.ParametroCliente) (models.Cliente, error) {
 
 	var cliente models.Cliente
-	collection := getDatabaseCollection("cliente")
+	collection := getDatabaseCollection("Clientes")
 
 	//define filter for the findOne command using the identification number
 	filter := bson.M{"numero_identificacion": param_cliente.NumeroIdentificacion}
 
 	err := collection.FindOne(context.Background(), filter).Decode(&cliente)
 	if err != nil {
-		fmt.Println("Error retrieving documents:", err)
+		fmt.Println("Error al recuperar los documentos:", err)
 		return cliente, err
 	}
+
 	return cliente, nil
 }
 
-// dESDE AQUÍ FALTA IMPLEMENTAR LAS FUNCIONES
-func PostSession(param_inicio models.ParametroInicio) (int, error) {
-	var estado = 0
-	return estado, nil
+func GetWallet(numeroCliente string) (models.Billetera, error) {
+	collection := getDatabaseCollection("Billeteras")
+
+	filter := bson.M{"nro_cliente": numeroCliente}
+	var billetera models.Billetera
+	err := collection.FindOne(context.Background(), filter).Decode(&billetera)
+	if err != nil {
+		return models.Billetera{}, err
+	}
+
+	return billetera, nil
 }
 
-func PostDeposito(param_inicio models.ParametroInicio) (int, error) {
-	var estado = 0
-	return estado, nil
-}
+// DESDE AQUÍ FALTA IMPLEMENTAR LAS FUNCIONES
+func VerifySession(param_inicio models.ParametroInicio) bool {
+	var cliente models.Cliente
+	collection := getDatabaseCollection("Clientes")
 
-func PostTranferencia(param_inicio models.ParametroInicio) (int, error) {
-	var estado = 0
-	return estado, nil
-}
+	//define filter for the findOne command using the identification number
+	filter := bson.M{"numero_identificacion": param_inicio.NumeroIdentificacion, "contrasena": param_inicio.Contrasena}
 
-func PostGiro(param_inicio models.ParametroInicio) (int, error) {
-	var estado = 0
-	return estado, nil
+	err := collection.FindOne(context.Background(), filter).Decode(&cliente)
+	if err != nil {
+		fmt.Println("Error retrieving documents:", err)
+		return false
+	}
+	return true
 }

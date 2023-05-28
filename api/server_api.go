@@ -23,11 +23,11 @@ func main() {
 	router := gin.Default()
 
 	//Set the endpoints
-	router.GET("/api/cliente", controllers.GetCliente)
-	router.POST("/api/inicio_sesion", controllers.PostSession)
-	router.POST("/api/deposito", controllers.PostDeposito)
-	router.POST("/api/transferancia", controllers.PostTranferencia)
-	router.POST("/api/giro", controllers.PostGiro)
+	router.GET("/api/cliente", controllers.GetClient)
+	router.POST("/api/inicio_sesion", controllers.SessionHandler)
+	router.POST("/api/deposito", controllers.DepositHandler)
+	router.POST("/api/transferancia", controllers.TransferHandler)
+	router.POST("/api/giro", controllers.WithdrawHandler)
 
 	router.Run(server + ":" + port)
 }
