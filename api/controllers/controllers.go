@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetCliente(c *gin.Context) {
+func GetClient(c *gin.Context) {
 
 	//Varianble for the client's parameters
 	var param_cliente models.ParametroCliente
@@ -27,14 +27,14 @@ func GetCliente(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 	} else {
 		// Call the GetCliente function from the models package with the parameters
-		cliente, err := database.GetCliente(param_cliente)
+		cliente, err := database.GetClient(param_cliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 		// Crear la respuesta del cliente sin la contraseña
 		respuesta := models.Cliente{
-			ID:                   cliente.ID,
+			Id:                   cliente.Id,
 			Nombre:               cliente.Nombre,
 			FechaNacimiento:      cliente.FechaNacimiento,
 			Direccion:            cliente.Direccion,
@@ -88,14 +88,14 @@ func DepositHandler(c *gin.Context) {
 
 		cliente, err := database.GetClient(param_cliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "cliente_no_encontrado"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente
-		billetera, err := database.GetWallet(param_deposito.NumeroCliente)
+		billetera, err := database.GetWallet(param_deposito.NroCliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "billetera_no_encontrada"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_no_encontrada"})
 			return
 		}
 
@@ -107,7 +107,8 @@ func DepositHandler(c *gin.Context) {
 		//
 		//
 
-		c.JSON(http.StatusOK, models.Estado{Estado: "deposito_enviado"})
+		fmt.Printf(cliente.NumeroIdentificacion, billetera)
+		c.JSON(http.StatusOK, models.Response{Estado: "deposito_enviado"})
 	}
 }
 
@@ -151,7 +152,7 @@ func TransferHandler(c *gin.Context) {
 
 		cliente, err := database.GetClient(param_cliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "cliente_no_encontrado"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
@@ -160,27 +161,27 @@ func TransferHandler(c *gin.Context) {
 
 		cliente, err = database.GetClient(param_cliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "cliente_no_encontrado"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente de origen
-		billeteraOrigen, err := models.GetWallet(param_transferencia.NroClienteOrigen)
+		billeteraOrigen, err := database.GetWallet(param_transferencia.NroClienteOrigen)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "billetera_destino_no_encontrada"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
 		}
 
 		// Obtener la billetera del cliente de destino
-		billeteraDestino, err := models.GetWallet(param_transferencia.NroClienteDestino)
+		billeteraDestino, err := database.GetWallet(param_transferencia.NroClienteDestino)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "billetera_destino_no_encontrada"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
 		}
 
 		// Verificar si la billetera de origen tiene fondos suficientes
 		if !VerifyFunds(billeteraOrigen, param_transferencia.Monto) {
-			c.JSON(http.StatusUnprocessableEntity, models.Estado{Estado: "billetera_origen_sin_fondos_suficientes"})
+			c.JSON(http.StatusUnprocessableEntity, models.Response{Estado: "billetera_origen_sin_fondos_suficientes"})
 			return
 		}
 
@@ -192,7 +193,9 @@ func TransferHandler(c *gin.Context) {
 		//
 		//
 
-		c.JSON(http.StatusOK, models.Estado{Estado: "transferencia_enviada"})
+		fmt.Printf(cliente.NumeroIdentificacion, billeteraDestino.NroCliente)
+
+		c.JSON(http.StatusOK, models.Response{Estado: "transferencia_enviada"})
 	}
 }
 
@@ -212,20 +215,20 @@ func WithdrawHandler(c *gin.Context) {
 
 		cliente, err := database.GetClient(param_cliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "cliente_no_encontrado"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente
-		billetera, err := models.GetWallet(param_giro.NroCliente)
+		billetera, err := database.GetWallet(param_giro.NroCliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Estado{Estado: "billetera_destino_no_encontrada"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
 		}
 
 		// Verificar si la billetera de origen tiene fondos suficientes
 		if !VerifyFunds(billetera, param_giro.Monto) {
-			c.JSON(http.StatusUnprocessableEntity, models.Estado{Estado: "billetera_origen_sin_fondos_suficientes"})
+			c.JSON(http.StatusUnprocessableEntity, models.Response{Estado: "billetera_origen_sin_fondos_suficientes"})
 			return
 		}
 
@@ -237,6 +240,8 @@ func WithdrawHandler(c *gin.Context) {
 		//
 		//
 
-		c.JSON(http.StatusOK, models.Estado{Estado: "giro_enviado"})
+		fmt.Printf(cliente.NumeroIdentificacion)
+
+		c.JSON(http.StatusOK, models.Response{Estado: "giro_enviado"})
 	}
 }

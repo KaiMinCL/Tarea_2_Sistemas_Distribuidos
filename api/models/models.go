@@ -52,7 +52,7 @@ type ParametroInicio struct {
 type ParametroDeposito struct {
 	NroCliente string `bson:"nro_cliente" json:"nro_cliente"`
 	Monto      string `bson:"monto" json:"monto"`
-	Divisa     string `bson; "divisa" json:"divisa"`
+	Divisa     string `bson:"divisa" json:"divisa"`
 }
 
 type ParametroTransferencia struct {
