@@ -1,4 +1,4 @@
-module banco
+module TrustBankApi
 
 go 1.20
 
