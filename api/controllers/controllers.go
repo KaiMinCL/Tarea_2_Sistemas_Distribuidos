@@ -3,16 +3,14 @@ package controllers
 import (
 	"TrustBankApi/database"
 	"TrustBankApi/models"
+	"encoding/json"
 	"fmt"
 	"log"
-	_ "log"
-	_ "math/rand"
 	"net/http"
 	"strconv"
-	_ "strings"
-	_ "time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/streadway/amqp"
 )
 
 func GetClient(c *gin.Context) {
@@ -71,6 +69,54 @@ func SessionHandler(c *gin.Context) {
 	}
 }
 
+// EnviarMensajeRabbitMQ envía un mensaje a RabbitMQ
+func SendRabbitMessage(movimiento models.Movimiento) error {
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		return err
+	}
+	defer ch.Close()
+
+	queue, err := ch.QueueDeclare(
+		"movimientos_queue", // Nombre de la cola
+		false,               // No duradera
+		false,               // No eliminar cuando no hay consumidores
+		false,               // No exclusiva
+		false,               // No esperar confirmación
+		nil,                 // Argumentos adicionales
+	)
+	if err != nil {
+		return err
+	}
+
+	body, err := json.Marshal(movimiento)
+	if err != nil {
+		return err
+	}
+
+	err = ch.Publish(
+		"",         // Exchange
+		queue.Name, // Routing key
+		false,      // Mandatory
+		false,      // Immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func DepositHandler(c *gin.Context) {
 	//Varianble for the client's parameters
 	var param_deposito models.ParametroDeposito
@@ -100,12 +146,19 @@ func DepositHandler(c *gin.Context) {
 		}
 
 		// Realizar el depósito enviando un mensaje a RabbitMQ
-		//
-		//
-		// 	      TO DO
-		//
-		//
-		//
+		movimiento := models.Movimiento{
+			NroClienteOrigen:  param_deposito.NroCliente,
+			NroClienteDestino: param_deposito.NroCliente,
+			Monto:             param_deposito.Monto,
+			Divisa:            param_deposito.Divisa,
+			Tipo:              "deposito",
+		}
+
+		err = SendRabbitMessage(movimiento)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.Response{Estado: "error_deposito"})
+			return
+		}
 
 		fmt.Printf(cliente.NumeroIdentificacion, billetera)
 		c.JSON(http.StatusOK, models.Response{Estado: "deposito_enviado"})
@@ -186,14 +239,19 @@ func TransferHandler(c *gin.Context) {
 		}
 
 		// Realizar la transferencia enviando un mensaje a RabbitMQ
-		//
-		//
-		// 	      TO DO
-		//
-		//
-		//
+		movimiento := models.Movimiento{
+			NroClienteOrigen:  param_transferencia.NroClienteOrigen,
+			NroClienteDestino: param_transferencia.NroClienteDestino,
+			Monto:             param_transferencia.Monto,
+			Divisa:            param_transferencia.Divisa,
+			Tipo:              "transferencia",
+		}
 
-		fmt.Printf(cliente.NumeroIdentificacion, billeteraDestino.NroCliente)
+		err = SendRabbitMessage(movimiento)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.Response{Estado: "error_transferencia"})
+			return
+		}
 
 		c.JSON(http.StatusOK, models.Response{Estado: "transferencia_enviada"})
 	}

@@ -3,7 +3,6 @@ package database
 import (
 	"TrustBankApi/models"
 	"context"
-	_ "errors"
 	"fmt"
 	"log"
 	"os"
