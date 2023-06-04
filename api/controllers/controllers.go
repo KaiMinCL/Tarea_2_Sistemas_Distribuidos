@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"TrustBankApi/database"
-	"TrustBankApi/models"
+	"TrustBankAPI/apiDB"
+	"common/models"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -25,7 +25,8 @@ func GetClient(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 	} else {
 		// Call the GetCliente function from the models package with the parameters
-		cliente, err := database.GetClient(param_cliente)
+		cliente, err := apiDB.GetClient(param_cliente)
+
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
@@ -59,7 +60,7 @@ func SessionHandler(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 	} else {
 		// Call the GetCliente function from the models package with the parameters
-		session := database.VerifySession(param_inicio)
+		session := apiDB.VerifySession(param_inicio)
 
 		if session {
 			c.JSON(http.StatusOK, models.Response{Estado: "exitoso"})
@@ -132,24 +133,26 @@ func DepositHandler(c *gin.Context) {
 		var param_cliente models.ParametroCliente
 		param_cliente.NumeroIdentificacion = param_deposito.NroCliente
 
-		cliente, err := database.GetClient(param_cliente)
+		cliente, err := apiDB.GetClient(param_cliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente
-		billetera, err := database.GetWallet(param_deposito.NroCliente)
+		billetera, err := apiDB.GetWallet(param_deposito.NroCliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_no_encontrada"})
 			return
 		}
 
+		monto, _ := strconv.ParseFloat(param_deposito.Monto, 64)
+
 		// Realizar el depósito enviando un mensaje a RabbitMQ
 		movimiento := models.Movimiento{
 			NroClienteOrigen:  param_deposito.NroCliente,
 			NroClienteDestino: param_deposito.NroCliente,
-			Monto:             param_deposito.Monto,
+			Monto:             monto,
 			Divisa:            param_deposito.Divisa,
 			Tipo:              "deposito",
 		}
@@ -168,11 +171,6 @@ func DepositHandler(c *gin.Context) {
 // VerificarFondosSuficientes verifica si la billetera de origen tiene fondos suficientes para la transferencia
 func VerifyFunds(billetera models.Billetera, monto string) bool {
 	// Convertir el saldo y el monto a números decimales
-	saldo, err := strconv.ParseFloat(billetera.Saldo, 64)
-	if err != nil {
-		log.Println("Error al convertir el saldo de la billetera a número decimal:", err)
-		return false
-	}
 
 	montoTransferencia, err := strconv.ParseFloat(monto, 64)
 	if err != nil {
@@ -181,7 +179,7 @@ func VerifyFunds(billetera models.Billetera, monto string) bool {
 	}
 
 	// Verificar si el saldo es suficiente para la transferencia
-	if saldo >= montoTransferencia {
+	if billetera.Saldo >= montoTransferencia {
 		return true
 	}
 
@@ -203,7 +201,7 @@ func TransferHandler(c *gin.Context) {
 		var param_cliente models.ParametroCliente
 		param_cliente.NumeroIdentificacion = param_transferencia.NroClienteOrigen
 
-		cliente, err := database.GetClient(param_cliente)
+		_, err := apiDB.GetClient(param_cliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
@@ -212,21 +210,21 @@ func TransferHandler(c *gin.Context) {
 		//Verificar si existe el cliente destino
 		param_cliente.NumeroIdentificacion = param_transferencia.NroClienteDestino
 
-		cliente, err = database.GetClient(param_cliente)
+		_, err = apiDB.GetClient(param_cliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente de origen
-		billeteraOrigen, err := database.GetWallet(param_transferencia.NroClienteOrigen)
+		billeteraOrigen, err := apiDB.GetWallet(param_transferencia.NroClienteOrigen)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
 		}
 
 		// Obtener la billetera del cliente de destino
-		billeteraDestino, err := database.GetWallet(param_transferencia.NroClienteDestino)
+		_, err = apiDB.GetWallet(param_transferencia.NroClienteDestino)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
@@ -238,11 +236,22 @@ func TransferHandler(c *gin.Context) {
 			return
 		}
 
+		montoTransferencia, err := strconv.ParseFloat(param_transferencia.Monto, 64)
+		if err != nil {
+			log.Println("Error al convertir el monto de transferencia a número decimal:", err)
+			return
+		}
+
+		// Verificar si el saldo es suficiente para la transferencia
+		if billeteraOrigen.Saldo >= montoTransferencia {
+			return
+		}
+
 		// Realizar la transferencia enviando un mensaje a RabbitMQ
 		movimiento := models.Movimiento{
 			NroClienteOrigen:  param_transferencia.NroClienteOrigen,
 			NroClienteDestino: param_transferencia.NroClienteDestino,
-			Monto:             param_transferencia.Monto,
+			Monto:             montoTransferencia,
 			Divisa:            param_transferencia.Divisa,
 			Tipo:              "transferencia",
 		}
@@ -271,14 +280,14 @@ func WithdrawHandler(c *gin.Context) {
 		var param_cliente models.ParametroCliente
 		param_cliente.NumeroIdentificacion = param_giro.NroCliente
 
-		cliente, err := database.GetClient(param_cliente)
+		_, err := apiDB.GetClient(param_cliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente
-		billetera, err := database.GetWallet(param_giro.NroCliente)
+		billetera, err := apiDB.GetWallet(param_giro.NroCliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
@@ -290,15 +299,22 @@ func WithdrawHandler(c *gin.Context) {
 			return
 		}
 
-		// Realizar el giro enviando un mensaje a RabbitMQ
-		//
-		//
-		// 	      TO DO
-		//
-		//
-		//
+		montoGiro, err := strconv.ParseFloat(param_giro.Monto, 64)
 
-		fmt.Printf(cliente.NumeroIdentificacion)
+		// Create a message payload
+		movimiento := models.Movimiento{
+			NroClienteOrigen:  param_giro.NroCliente,
+			NroClienteDestino: param_giro.NroCliente,
+			Monto:             montoGiro,
+			Divisa:            param_giro.Divisa,
+			Tipo:              "giro",
+		}
+
+		err = SendRabbitMessage(movimiento)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.Response{Estado: "error_transferencia"})
+			return
+		}
 
 		c.JSON(http.StatusOK, models.Response{Estado: "giro_enviado"})
 	}

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"RabbitMqMovements/database"
-	"RabbitMqMovements/models"
+	"common/models"
 	"encoding/json"
 	"log"
 	"os"
+
+	"RabbitMQWallet/database"
 
 	"github.com/joho/godotenv"
 	"github.com/streadway/amqp"
