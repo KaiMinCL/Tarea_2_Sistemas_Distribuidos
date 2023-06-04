@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package movimientos;
 
-option go_package = "./";
+service MovimientosService {
+  rpc RegistrarMovimiento(MovimientoRequest) returns (MovimientoResponse){}
+}
 
 message MovimientoRequest {
   string nro_cliente_origen = 1;
@@ -12,7 +14,7 @@ message MovimientoRequest {
   string tipo_operacion = 5;
 }
 
-service MovimientosService {
-  rpc RegistrarMovimiento(MovimientoRequest) returns (MovimientoRequest){}
+message MovimientoResponse {
+  string mensaje = 1;
 }
 
