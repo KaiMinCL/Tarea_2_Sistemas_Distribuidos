@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"TrustBankApi/database"
-	"TrustBankApi/models"
+	"TrustBankApi/api/database"
+	"TrustBankApi/api/models"
 	"fmt"
 	"log"
 	_ "log"

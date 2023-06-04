@@ -1,7 +1,7 @@
 package database
 
 import (
-	"TrustBankApi/models"
+	"TrustBankApi/api/models"
 	"context"
 	_ "errors"
 	"fmt"

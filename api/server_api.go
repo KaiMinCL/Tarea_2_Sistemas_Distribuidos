@@ -1,7 +1,7 @@
 package main
 
 import (
-	"TrustBankApi/controllers"
+	"TrustBankApi/api/controllers"
 	"log"
 	"os"
 
