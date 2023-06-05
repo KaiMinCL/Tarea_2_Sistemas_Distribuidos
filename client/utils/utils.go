@@ -6,7 +6,7 @@ import (
 	"log"
 	"io/ioutil"
 	"encoding/json"
-	"TrustBankApi/api/models"
+	"common/models"
 	"bytes"
 	)
 

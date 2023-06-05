@@ -1,7 +1,7 @@
 package main
 
 import (
-	"TrustBankApi/client/utils"
+	"client/utils"
 	"fmt"
 	"log"
 	"os"
@@ -50,8 +50,6 @@ func log_in(URL string){
 		log_in(URL)
 	}
 }
-
-
 
 func actions(URL string){
 	var(
