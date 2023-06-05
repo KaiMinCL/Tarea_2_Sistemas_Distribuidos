@@ -55,20 +55,20 @@ type ParametroInicio struct {
 
 type ParametroDeposito struct {
 	NroCliente string `bson:"nro_cliente" json:"nro_cliente"`
-	Monto      string `bson:"monto" json:"monto"`
+	Monto      float64 `bson:"monto" json:"monto"`
 	Divisa     string `bson:"divisa" json:"divisa"`
 }
 
 type ParametroTransferencia struct {
 	NroClienteOrigen  string `bson:"nro_cliente_origen" json:"nro_cliente_origen"`
 	NroClienteDestino string `bson:"nro_cliente_destino" json:"nro_cliente_destino"`
-	Monto             string `bson:"monto" json:"monto"`
+	Monto             float64 `bson:"monto" json:"monto"`
 	Divisa            string `bson:"divisa" json:"divisa"`
 }
 
 type ParametroGiro struct {
 	NroCliente string `bson:"nro_cliente" json:"nro_cliente"`
-	Monto      string `bson:"monto" json:"monto"`
+	Monto      float64 `bson:"monto" json:"monto"`
 	Divisa     string `bson:"divisa" json:"divisa"`
 }
 
