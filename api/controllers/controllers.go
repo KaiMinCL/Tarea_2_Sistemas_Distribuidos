@@ -167,7 +167,7 @@ func DepositHandler(c *gin.Context) {
 		}
 
 		// Obtener la billetera del cliente
-		_, err = apiDB.GetWallet(param_deposito.NroCliente, param_deposito.Divisa)
+		_, err = database.GetWallet(param_deposito.NroCliente, param_deposito.Divisa)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_no_encontrada"})
 			return
