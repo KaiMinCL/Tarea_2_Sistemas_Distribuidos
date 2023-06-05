@@ -15,7 +15,8 @@ import (
 )
 
 // Función para enviar una solicitud gRPC al servidor de movimientos
-func sendMovimientoRequest(client movimientos.MovimientosServiceClient, movimiento *movimientos.MovimientoRequest) {
+/*
+func sendMovimientoRequest(client movimientos.MovimientoRequest, movimiento *movimientos.MovimientoRequest) {
 	_, err := client.RegistrarMovimiento(context.Background(), movimiento)
 	if err != nil {
 		log.Printf("Failed to send movimiento request: %v", err)
@@ -23,6 +24,7 @@ func sendMovimientoRequest(client movimientos.MovimientosServiceClient, movimien
 		log.Println("Movimiento request sent successfully")
 	}
 }
+*/
 
 // Connect to MongoDB and retrieve the collection needed
 func getDatabaseCollection(collectionName string) (*mongo.Client, *mongo.Collection) {
@@ -59,7 +61,7 @@ func Deposit(nroCliente string, monto float64, divisa string) error {
 	return nil
 }
 
-func Transfer(nroClienteOrigen string, nroClienteDestino string, monto int, divisa string) error {
+func Transfer(nroClienteOrigen string, nroClienteDestino string, monto float64, divisa string) error {
 	client, collection := getDatabaseCollection("billeteras")
 
 	session, err := client.StartSession()

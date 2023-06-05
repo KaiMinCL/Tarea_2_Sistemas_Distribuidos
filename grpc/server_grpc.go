@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
 
-	"common/movimientos"
+	pb "common/movimientos"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,37 +16,47 @@ import (
 	"google.golang.org/grpc"
 )
 
-type MovimientosServer struct {
-	MongoClient   *mongo.Client
-	MongoDatabase *mongo.Database
+type movimientosServer struct {
+	db *mongo.Client
 }
 
-// Implementa los métodos del servicio
-func (s *MovimientosServer) RegistrarMovimiento(ctx context.Context, request *protos.MovimientoRequest) (*protos.MovimientoResponse, error) {
+func NewMovimientosServer(db *mongo.Client) *movimientosServer {
+	return &movimientosServer{
+		db: db,
+	}
+}
 
-	// Obtener la colección "movimientos"
-	collection := s.MongoDatabase.Collection("movimientos")
+// Implement the methods of the movimientos service
+func (s *movimientosServer) RegisterMovimientosService(ctx context.Context, request *pb.MovimientoRequest) (*pb.MovimientoResponse, error) {
+	// Process the received movimiento request
+	nroClienteOrigen := request.GetNroClienteOrigen()
+	nroClienteDestino := request.GetNroClienteDestino()
+	monto := request.GetMonto()
+	divisa := request.GetDivisa()
+	tipoOperacion := request.GetTipoOperacion()
 
-	// Crear un documento BSON a partir del movimiento recibido
+	// Create a BSON document from the received movimiento
 	movimiento := bson.D{
-		{Key: "nro_cliente_origen", Value: request.NroClienteOrigen},
-		{Key: "nro_cliente_destino", Value: request.NroClienteDestino},
-		{Key: "monto", Value: request.Monto},
-		{Key: "divisa", Value: request.Divisa},
-		{Key: "tipo_operacion", Value: request.TipoOperacion},
+		{Key: "nro_cliente_origen", Value: nroClienteOrigen},
+		{Key: "nro_cliente_destino", Value: nroClienteDestino},
+		{Key: "monto", Value: monto},
+		{Key: "divisa", Value: divisa},
+		{Key: "tipo_operacion", Value: tipoOperacion},
 	}
 
-	// Insertar el documento en la colección "movimientos"
+	// Insert the movimiento document into the MongoDB collection
+	collection := s.db.Database("TrustBank").Collection("Movimientos")
 	_, err := collection.InsertOne(ctx, movimiento)
 	if err != nil {
-		log.Printf("Error al insertar el movimiento en MongoDB: %v", err)
-		return nil, err
+		log.Printf("Failed to insert movimiento into MongoDB: %v", err)
 	}
 
-	log.Printf("Movimiento registrado: %+v", request)
+	// Return a response to the client
+	response := &pb.MovimientoResponse{
+		Mensaje: fmt.Sprintf("Movimiento registrado: %s -> %s, Monto: %f", request.NroClienteOrigen, request.NroClienteDestino, request.Monto),
+	}
 
-	// Devolver la misma solicitud recibida como respuesta
-	return request, nil
+	return response, nil
 }
 
 func main() {
@@ -59,23 +70,18 @@ func main() {
 	var grpcPort = os.Getenv("GRPC_PORT")
 	var dbConnectionString = os.Getenv("DB_CONNECTION_STRING")
 
-	// Establecer la conexión con MongoDB
-	clientOptions := options.Client().ApplyURI(dbConnectionString)
-	client, err := mongo.Connect(context.Background(), clientOptions)
+	/// Set up the MongoDB client
+	client, err := mongo.NewClient(options.Client().ApplyURI(dbConnectionString))
 	if err != nil {
-		log.Fatalf("Error al conectar con MongoDB: %v", err)
+		log.Fatalf("Failed to create MongoDB client: %v", err)
 	}
 
-	database := client.Database("TrustBank")
-
-	// Crear una instancia del servidor gRPC de movimientos
-	server := grpc.NewServer()
-
-	// Registrar el servidor de movimientos
-	movimientos.RegisterMovimientosServiceServer(server, &MovimientosServer{
-		MongoClient:   client,
-		MongoDatabase: database,
-	})
+	ctx := context.TODO()
+	err = client.Connect(ctx)
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+	defer client.Disconnect(ctx)
 
 	// Iniciar el servidor en un puerto específico
 	listener, err := net.Listen("tcp", grpcHost+":"+grpcPort)
@@ -83,6 +89,17 @@ func main() {
 		log.Fatalf("Error al iniciar el servidor: %v", err)
 	}
 	log.Println("Servidor gRPC iniciado en el puerto " + grpcPort)
+
+	// Create a new gRPC server
+	server := grpc.NewServer()
+
+	///// BUGS BUGS
+
+	// Register the movimientos server implementation with the gRPC server
+	//movimientosServer := NewMovimientosServer(client)
+	//pb.RegisterMovimientosService(server, movimientosServer)
+
+	///// BUGS BUGS
 
 	// Iniciar el servidor gRPC
 	if err := server.Serve(listener); err != nil {
