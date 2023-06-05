@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package movimientos;
 
+option go_package = "./grpc";
+
 service MovimientosService {
   rpc RegistrarMovimiento(MovimientoRequest) returns (MovimientoResponse){}
 }

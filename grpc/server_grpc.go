@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
+	"time"
 
-	pb "common/movimientos"
+	pb "common/movimientos/grpc"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,72 +16,67 @@ import (
 	"google.golang.org/grpc"
 )
 
-type movimientosServer struct {
-	db *mongo.Client
+type server struct {
+	pb.UnimplementedMovimientosServiceServer
 }
 
-func NewMovimientosServer(db *mongo.Client) *movimientosServer {
-	return &movimientosServer{
-		db: db,
-	}
-}
-
-// Implement the methods of the movimientos service
-func (s *movimientosServer) RegisterMovimientosService(ctx context.Context, request *pb.MovimientoRequest) (*pb.MovimientoResponse, error) {
-	// Process the received movimiento request
-	nroClienteOrigen := request.GetNroClienteOrigen()
-	nroClienteDestino := request.GetNroClienteDestino()
-	monto := request.GetMonto()
-	divisa := request.GetDivisa()
-	tipoOperacion := request.GetTipoOperacion()
-
-	// Create a BSON document from the received movimiento
-	movimiento := bson.D{
-		{Key: "nro_cliente_origen", Value: nroClienteOrigen},
-		{Key: "nro_cliente_destino", Value: nroClienteDestino},
-		{Key: "monto", Value: monto},
-		{Key: "divisa", Value: divisa},
-		{Key: "tipo_operacion", Value: tipoOperacion},
-	}
-
-	// Insert the movimiento document into the MongoDB collection
-	collection := s.db.Database("TrustBank").Collection("Movimientos")
-	_, err := collection.InsertOne(ctx, movimiento)
+func (s *server) RegistrarMovimiento(ctx context.Context, req *pb.MovimientoRequest) (*pb.MovimientoResponse, error) {
+	// Create a connection to MongoDB
+	client, err := mongo.NewClient(options.Client().ApplyURI(getMongoURI()))
 	if err != nil {
-		log.Printf("Failed to insert movimiento into MongoDB: %v", err)
+		log.Fatalf("Error creating MongoDB client: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = client.Connect(ctx)
+	if err != nil {
+		log.Fatalf("Error connecting to MongoDB: %v", err)
+	}
+	defer func() {
+		if err = client.Disconnect(ctx); err != nil {
+			log.Fatalf("Error disconnecting from MongoDB: %v", err)
+		}
+	}()
+
+	// Seleccionar la base de datos y la colección
+	db := client.Database("TrustBank")
+	collection := db.Collection("Movimientos")
+
+	// Crear el documento para insertar en MongoDB
+	movimiento := bson.M{
+		"nro_cliente_origen":  req.GetNroClienteOrigen(),
+		"nro_cliente_destino": req.GetNroClienteDestino(),
+		"monto":               req.GetMonto(),
+		"divisa":              req.GetDivisa(),
+		"tipo_operacion":      req.GetTipoOperacion(),
 	}
 
-	// Return a response to the client
-	response := &pb.MovimientoResponse{
-		Mensaje: fmt.Sprintf("Movimiento registrado: %s -> %s, Monto: %f", request.NroClienteOrigen, request.NroClienteDestino, request.Monto),
+	// Insertar el documento en la colección
+	_, err = collection.InsertOne(ctx, movimiento)
+	if err != nil {
+		log.Fatalf("Error al insertar el movimiento en MongoDB: %v", err)
 	}
 
-	return response, nil
+	return &pb.MovimientoResponse{Mensaje: "Movimiento registrado exitosamente"}, nil
+}
+
+func getMongoURI() string {
+	mongoURI := os.Getenv("DB_CONNECTION_STRING")
+	if mongoURI == "" {
+		log.Fatal("DB_CONNECTION_STRING environment variable not set")
+	}
+	return mongoURI
 }
 
 func main() {
 
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
 	var grpcHost = os.Getenv("GRPC_HOST")
 	var grpcPort = os.Getenv("GRPC_PORT")
-	var dbConnectionString = os.Getenv("DB_CONNECTION_STRING")
-
-	/// Set up the MongoDB client
-	client, err := mongo.NewClient(options.Client().ApplyURI(dbConnectionString))
-	if err != nil {
-		log.Fatalf("Failed to create MongoDB client: %v", err)
-	}
-
-	ctx := context.TODO()
-	err = client.Connect(ctx)
-	if err != nil {
-		log.Fatalf("Failed to connect to MongoDB: %v", err)
-	}
-	defer client.Disconnect(ctx)
 
 	// Iniciar el servidor en un puerto específico
 	listener, err := net.Listen("tcp", grpcHost+":"+grpcPort)
@@ -90,19 +85,10 @@ func main() {
 	}
 	log.Println("Servidor gRPC iniciado en el puerto " + grpcPort)
 
-	// Create a new gRPC server
-	server := grpc.NewServer()
-
-	///// BUGS BUGS
-
-	// Register the movimientos server implementation with the gRPC server
-	//movimientosServer := NewMovimientosServer(client)
-	//pb.RegisterMovimientosService(server, movimientosServer)
-
-	///// BUGS BUGS
-
-	// Iniciar el servidor gRPC
-	if err := server.Serve(listener); err != nil {
-		log.Fatalf("Error al servir: %v", err)
+	s := grpc.NewServer()
+	pb.RegisterMovimientosServiceServer(s, &server{})
+	log.Printf("gRPC server started on port %s", grpcPort)
+	if err := s.Serve(listener); err != nil {
+		log.Fatalf("Error starting gRPC server: %v", err)
 	}
 }

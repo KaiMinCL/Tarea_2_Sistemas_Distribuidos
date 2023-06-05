@@ -16,8 +16,8 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	var port = os.Getenv("PORT")
-	var server = os.Getenv("SERVER")
+	var httpHost = os.Getenv("HTTP_HOST")
+	var httpPort = os.Getenv("HTTP_PORT")
 
 	//Define the new router for the Gin framework
 	router := gin.Default()
@@ -29,5 +29,5 @@ func main() {
 	router.POST("/api/transferancia", controllers.TransferHandler)
 	router.POST("/api/giro", controllers.WithdrawHandler)
 
-	router.Run(server + ":" + port)
+	router.Run(httpHost + ":" + httpPort)
 }
