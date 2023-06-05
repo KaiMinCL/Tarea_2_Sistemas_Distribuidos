@@ -138,7 +138,6 @@ func main(){
 
 	case 3:
 		var amount float64
-		var destino string
 		fmt.Print("Ingrese un monto: ")
 		fmt.Scan(&amount)
 		resp, err := utils.Giro(URL, numero_cliente, "USD", amount)
