@@ -6,9 +6,8 @@ import (
 	"log"
 	"os"
 
-	"../common/movimientos/movimientosGRPC"
-
 	"../common/database"
+	"../common/movimientos/movimientosGRPC"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc"
