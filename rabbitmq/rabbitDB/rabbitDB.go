@@ -1,17 +1,15 @@
-package database
+package rabbitDB
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
+	"common/database"
 	"common/models"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/grpc"
 )
 
 // Función para enviar una solicitud gRPC al servidor de movimientos
@@ -26,31 +24,23 @@ func sendMovimientoRequest(client movimientos.MovimientoRequest, movimiento *mov
 }
 */
 
-// Connect to MongoDB and retrieve the collection needed
-func getDatabaseCollection(collectionName string) (*mongo.Client, *mongo.Collection) {
-	err := godotenv.Load()
+// Create a gRPC client connection
+func createGRPCClient() (*grpc.ClientConn, error) {
+	grpcServerAddr := "<gRPC server address>" // Replace with the actual gRPC server address
+
+	// Dial the gRPC server
+	conn, err := grpc.Dial(grpcServerAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		return nil, fmt.Errorf("failed to connect to gRPC server: %v", err)
 	}
 
-	var CONNECTION_STRING = os.Getenv("CONNECTION_STRING")
-
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(CONNECTION_STRING))
-
-	if err != nil {
-		panic(err)
-	}
-
-	collection := client.Database("TrustBank").Collection(collectionName)
-
-	return client, collection
+	return conn, nil
 }
 
 func Deposit(nroCliente string, monto float64, divisa string) error {
-	_, collection := getDatabaseCollection("billeteras")
+	_, collection := database.GetDatabaseCollection("Billeteras")
 	filter := bson.M{"nro_cliente": nroCliente}
 	update := bson.M{"$inc": bson.M{"saldo": monto}}
-
 	_, err := collection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		log.Println("Failed to update wallet in MongoDB:", err)
@@ -62,7 +52,7 @@ func Deposit(nroCliente string, monto float64, divisa string) error {
 }
 
 func Transfer(nroClienteOrigen string, nroClienteDestino string, monto float64, divisa string) error {
-	client, collection := getDatabaseCollection("billeteras")
+	client, collection := database.GetDatabaseCollection("Billeteras")
 
 	session, err := client.StartSession()
 	if err != nil {
@@ -106,7 +96,7 @@ func Transfer(nroClienteOrigen string, nroClienteDestino string, monto float64, 
 // Función para realizar el giro en la billetera del cliente
 func Withdraw(nroCliente string, monto float64, divisa string) error {
 	// Obtener la conexión a MongoDB y la colección necesaria
-	client, collection := getDatabaseCollection("billeteras")
+	client, collection := database.GetDatabaseCollection("Billeteras")
 	defer client.Disconnect(context.Background())
 
 	// Iniciar una sesión de transacción en MongoDB

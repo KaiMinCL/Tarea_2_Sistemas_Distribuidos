@@ -27,7 +27,7 @@ type Billetera struct {
 	Saldo      float64            `bson:"saldo" json:"saldo"`
 	Divisa     string             `bson:"divisa" json:"divisa"`
 	Nombre     string             `bson:"nombre" json:"nombre"`
-	Activo     string             `bson:"activo" json:"activo"`
+	Activo     bool               `bson:"activo" json:"activo"`
 }
 
 type Movimiento struct {

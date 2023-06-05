@@ -13,9 +13,8 @@ import (
 func GetClient(param_cliente models.ParametroCliente) (models.Cliente, error) {
 
 	var cliente models.Cliente
-	collection := database.GetDatabaseCollection("Clientes")
+	_, collection := database.GetDatabaseCollection("Clientes")
 
-	//define filter for the findOne command using the identification number
 	filter := bson.M{"numero_identificacion": param_cliente.NumeroIdentificacion}
 
 	err := collection.FindOne(context.Background(), filter).Decode(&cliente)
@@ -27,10 +26,11 @@ func GetClient(param_cliente models.ParametroCliente) (models.Cliente, error) {
 	return cliente, nil
 }
 
-func GetWallet(numeroCliente string) (models.Billetera, error) {
-	collection := database.GetDatabaseCollection("Billeteras")
+func GetWallet(numeroCliente, divisaBilletera string) (models.Billetera, error) {
+	_, collection := database.GetDatabaseCollection("Billeteras")
 
-	filter := bson.M{"nro_cliente": numeroCliente}
+	filter := bson.M{"nro_cliente": numeroCliente, "divisa": divisaBilletera}
+
 	var billetera models.Billetera
 	err := collection.FindOne(context.Background(), filter).Decode(&billetera)
 	if err != nil {
@@ -40,10 +40,9 @@ func GetWallet(numeroCliente string) (models.Billetera, error) {
 	return billetera, nil
 }
 
-// DESDE AQUÍ FALTA IMPLEMENTAR LAS FUNCIONES
 func VerifySession(param_inicio models.ParametroInicio) bool {
 	var cliente models.Cliente
-	collection := database.GetDatabaseCollection("Clientes")
+	_, collection := database.GetDatabaseCollection("Clientes")
 
 	//define filter for the findOne command using the identification number
 	filter := bson.M{"numero_identificacion": param_inicio.NumeroIdentificacion, "contrasena": param_inicio.Contrasena}

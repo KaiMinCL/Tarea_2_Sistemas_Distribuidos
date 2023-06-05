@@ -11,15 +11,15 @@ import (
 )
 
 // Connect to MongoDB and retrieve the collection needed
-func GetDatabaseCollection(collectionName string) *mongo.Collection {
-	err := godotenv.Load()
+func GetDatabaseCollection(collectionName string) (*mongo.Client, *mongo.Collection) {
+	err := godotenv.Load("../.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	var CONNECTION_STRING = os.Getenv("CONNECTION_STRING")
+	var connectionString = os.Getenv("DB_CONNECTION_STRING")
 
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(CONNECTION_STRING))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(connectionString))
 
 	if err != nil {
 		panic(err)
@@ -27,5 +27,5 @@ func GetDatabaseCollection(collectionName string) *mongo.Collection {
 
 	collection := client.Database("TrustBank").Collection(collectionName)
 
-	return collection
+	return client, collection
 }

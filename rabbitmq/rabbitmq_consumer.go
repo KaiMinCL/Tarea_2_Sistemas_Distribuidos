@@ -6,11 +6,10 @@ import (
 	"log"
 	"os"
 
-	"RabbitMQWallet/database"
+	"RabbitMQWallet/rabbitDB"
 
 	"github.com/joho/godotenv"
 	"github.com/streadway/amqp"
-	"google.golang.org/grpc"
 )
 
 func main() {
@@ -26,17 +25,18 @@ func main() {
 	var rabbitUsername = os.Getenv("RABBITMQ_USERNAME")
 	var rabbitPassword = os.Getenv("RABBITMQ_PASSWORD")
 	var rabbitQueue = os.Getenv("RABBITMQ_QUEUE_NAME")
-	var grpcHost = os.Getenv("GRPC_HOST")
-	var grpcPort = os.Getenv("GRPC_PORT")
+	//var grpcHost = os.Getenv("GRPC_HOST")
+	//var grpcPort = os.Getenv("GRPC_PORT")
 
-	// Configurar la conexión gRPC
+	/*// Configurar la conexión gRPC
 	grpc, err := grpc.Dial(grpcHost+":"+grpcPort, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
 	defer grpc.Close()
-
+	*/
 	// Establecer conexión con RabbitMQ
+
 	rabbit, err := amqp.Dial("amqp://" + rabbitUsername + ":" + rabbitPassword + "@" + rabbitHost + ":" + rabbitPort + "/")
 	if err != nil {
 		log.Fatalf("Error al establecer la conexión con RabbitMQ: %v", err)
@@ -65,13 +65,13 @@ func main() {
 
 	// Consumir mensajes de la cola
 	msgs, err := ch.Consume(
-		queue.Name, // Nombre de la cola
-		"",         // Nombre del consumidor
-		true,       // Auto-acknowledge
-		false,      // No-exclusivo
-		false,      // No-local
-		false,      // No-wait
-		nil,        // Argumentos adicionales
+		queue.Name,       // Nombre de la cola
+		"RabbitMQWallet", // Nombre del consumidor
+		false,            // Auto-acknowledge
+		false,            // No-exclusivo
+		false,            // No-local
+		false,            // No-wait
+		nil,              // Argumentos adicionales
 	)
 	if err != nil {
 		log.Fatalf("Error al registrar el consumidor: %v", err)
@@ -84,6 +84,7 @@ func main() {
 		for d := range msgs {
 			// Deserializar el mensaje en una estructura Movimiento
 			var movimiento models.Movimiento
+
 			err := json.Unmarshal(d.Body, &movimiento)
 			if err != nil {
 				log.Println("Failed to unmarshal message:", err)
@@ -94,11 +95,11 @@ func main() {
 			// Actualizar la billetera del cliente según el tipo de operación
 			switch movimiento.Tipo {
 			case "deposito":
-				err = database.Deposit(movimiento.NroClienteDestino, movimiento.Monto, movimiento.Divisa)
+				err = rabbitDB.Deposit(movimiento.NroClienteDestino, movimiento.Monto, movimiento.Divisa)
 			case "transferencia":
-				err = database.Transfer(movimiento.NroClienteOrigen, movimiento.NroClienteDestino, movimiento.Monto, movimiento.Divisa)
+				err = rabbitDB.Transfer(movimiento.NroClienteOrigen, movimiento.NroClienteDestino, movimiento.Monto, movimiento.Divisa)
 			case "giro":
-				err = database.Withdraw(movimiento.NroClienteOrigen, movimiento.Monto, movimiento.Divisa)
+				err = rabbitDB.Withdraw(movimiento.NroClienteOrigen, movimiento.Monto, movimiento.Divisa)
 			default:
 				log.Println("Invalid operation type:", movimiento.Tipo)
 			}
@@ -107,7 +108,8 @@ func main() {
 				log.Println("Failed to process operation:", err)
 			}
 
-			d.Ack(false) // Confirmar el procesamiento del mensaje
+			d.Ack(true) // Confirmar el procesamiento del mensaje
+
 		}
 	}()
 

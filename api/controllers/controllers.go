@@ -7,11 +7,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/streadway/amqp"
 )
+
+var rabbitConn *amqp.Connection
+var rabbitCh *amqp.Channel
+var rabbitQueue string
 
 func GetClient(c *gin.Context) {
 
@@ -21,7 +26,7 @@ func GetClient(c *gin.Context) {
 	//Getting the parameters
 	if err := c.BindJSON(&param_cliente); err != nil {
 
-		fmt.Println("Problem with Json bindng:", err)
+		fmt.Println("Problem with JSON bindng:", err)
 		c.AbortWithStatus(http.StatusBadRequest)
 	} else {
 		// Call the GetCliente function from the models package with the parameters
@@ -70,42 +75,65 @@ func SessionHandler(c *gin.Context) {
 	}
 }
 
-// EnviarMensajeRabbitMQ envía un mensaje a RabbitMQ
-func SendRabbitMessage(movimiento models.Movimiento) error {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+func InitRabbitMQ() error {
+	var rabbitPort = os.Getenv("RABBITMQ_PORT")
+	var rabbitHost = os.Getenv("RABBITMQ_HOST")
+	var rabbitUsername = os.Getenv("RABBITMQ_USERNAME")
+	var rabbitPassword = os.Getenv("RABBITMQ_PASSWORD")
+	rabbitQueue = os.Getenv("RABBITMQ_QUEUE_NAME")
+
+	// Establish a connection to RabbitMQ
+	conn, err := amqp.Dial("amqp://" + rabbitUsername + ":" + rabbitPassword + "@" + rabbitHost + ":" + rabbitPort + "/")
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	rabbitConn = conn
 
-	ch, err := conn.Channel()
+	// Create a channel
+	ch, err := rabbitConn.Channel()
 	if err != nil {
 		return err
 	}
-	defer ch.Close()
+	rabbitCh = ch
 
-	queue, err := ch.QueueDeclare(
-		"movimientos_queue", // Nombre de la cola
-		false,               // No duradera
-		false,               // No eliminar cuando no hay consumidores
-		false,               // No exclusiva
-		false,               // No esperar confirmación
-		nil,                 // Argumentos adicionales
+	// Declare the queue
+	_, err = rabbitCh.QueueDeclare(
+		rabbitQueue, // Name of the queue
+		false,       // Durable (false for non-durable)
+		false,       // AutoDelete (false for non-auto-delete)
+		false,       // Exclusive (false for non-exclusive)
+		false,       // NoWait (false to wait for server response)
+		nil,         // Arguments
 	)
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func CloseRabbitMQ() {
+	if rabbitCh != nil {
+		rabbitCh.Close()
+	}
+	if rabbitConn != nil {
+		rabbitConn.Close()
+	}
+}
+
+// EnviarMensajeRabbitMQ envía un mensaje a RabbitMQ
+func SendRabbitMessage(movimiento models.Movimiento) error {
 
 	body, err := json.Marshal(movimiento)
 	if err != nil {
 		return err
 	}
 
-	err = ch.Publish(
-		"",         // Exchange
-		queue.Name, // Routing key
-		false,      // Mandatory
-		false,      // Immediate
+	err = rabbitCh.Publish(
+		"",          // Exchange
+		rabbitQueue, // Routing key
+		false,       // Mandatory
+		false,       // Immediate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,
@@ -133,14 +161,14 @@ func DepositHandler(c *gin.Context) {
 		var param_cliente models.ParametroCliente
 		param_cliente.NumeroIdentificacion = param_deposito.NroCliente
 
-		cliente, err := apiDB.GetClient(param_cliente)
+		_, err := apiDB.GetClient(param_cliente)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente
-		billetera, err := apiDB.GetWallet(param_deposito.NroCliente)
+		_, err = apiDB.GetWallet(param_deposito.NroCliente, param_deposito.Divisa)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_no_encontrada"})
 			return
@@ -163,7 +191,6 @@ func DepositHandler(c *gin.Context) {
 			return
 		}
 
-		fmt.Printf(cliente.NumeroIdentificacion, billetera)
 		c.JSON(http.StatusOK, models.Response{Estado: "deposito_enviado"})
 	}
 }
@@ -203,7 +230,7 @@ func TransferHandler(c *gin.Context) {
 
 		_, err := apiDB.GetClient(param_cliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_origen_no_encontrado"})
 			return
 		}
 
@@ -212,19 +239,19 @@ func TransferHandler(c *gin.Context) {
 
 		_, err = apiDB.GetClient(param_cliente)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_no_encontrado"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "cliente_destino_no_encontrado"})
 			return
 		}
 
 		// Obtener la billetera del cliente de origen
-		billeteraOrigen, err := apiDB.GetWallet(param_transferencia.NroClienteOrigen)
+		billeteraOrigen, err := apiDB.GetWallet(param_transferencia.NroClienteOrigen, param_transferencia.Divisa)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_origen_no_encontrada"})
 			return
 		}
 
 		// Obtener la billetera del cliente de destino
-		_, err = apiDB.GetWallet(param_transferencia.NroClienteDestino)
+		_, err = apiDB.GetWallet(param_transferencia.NroClienteDestino, param_transferencia.Divisa)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
@@ -239,11 +266,6 @@ func TransferHandler(c *gin.Context) {
 		montoTransferencia, err := strconv.ParseFloat(param_transferencia.Monto, 64)
 		if err != nil {
 			log.Println("Error al convertir el monto de transferencia a número decimal:", err)
-			return
-		}
-
-		// Verificar si el saldo es suficiente para la transferencia
-		if billeteraOrigen.Saldo >= montoTransferencia {
 			return
 		}
 
@@ -287,15 +309,15 @@ func WithdrawHandler(c *gin.Context) {
 		}
 
 		// Obtener la billetera del cliente
-		billetera, err := apiDB.GetWallet(param_giro.NroCliente)
+		billetera, err := apiDB.GetWallet(param_giro.NroCliente, param_giro.Divisa)
 		if err != nil {
-			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
+			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_no_encontrada"})
 			return
 		}
 
 		// Verificar si la billetera de origen tiene fondos suficientes
 		if !VerifyFunds(billetera, param_giro.Monto) {
-			c.JSON(http.StatusUnprocessableEntity, models.Response{Estado: "billetera_origen_sin_fondos_suficientes"})
+			c.JSON(http.StatusUnprocessableEntity, models.Response{Estado: "billetera_sin_fondos_suficientes"})
 			return
 		}
 
