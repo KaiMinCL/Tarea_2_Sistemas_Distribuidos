@@ -4,22 +4,18 @@ Tarea n° 2: TrustBank
  - David ALVAREZ
  - Jules EVANS
 
+To execute the project one must launch 3 machines: One for the HTTP Server, and two more for the RabbitMq and gRPC servers. Each server can be started by using the following commands in root:
+ - For the server int the api folder: `go run Tarea2/api/server_api.go`
+ - For the rabbitmq in the rabbitmq folder: `go run Tarea2/rabbitmq/rabbitmq_consumer.go`
+ - For the grpc in the grpc folder: `go run Tarea2/grpc/server_grpc.go`
 
-To execute the project one must launch 4 terminals: one for the client, one for the server and the tow others for the rabbitmq and grpc.
+For the client you only need to clone the `Tarea2/client` folder in the respective client and run the client with `go run Tarea2/grpc/server_grpc.go` from the root.
 
-First you need to enter the main folder in each terminal: `cd ./Tarea2`
+For the evaluation of the assigment the servers are inside three VM with the following addresses:
+ - HTTP Server: `10.10.28.233:8080`
+ - RabbitMq Server: `10.10.11.49:5672`
+ - gRPC Server: `10.10.11.216:50051`
 
-Now in each terminal you need to acces the correct folder for executing the code: 
- - For the client in the folder client: ` cd ./client`
- - For the server int the api folder: ` cd ./server`
- - For the rabbitmq in the rabbitmq folder: `cd ./rabbitmq`
- - For the grpc in the grpc folder: `cd ./grpc`
+Because this are local network addresses, the client must be running inside the same local network of the Informatics Department.
 
-Next in each respective terminal execute in order: 
-
- - In the client one : `go run client_menu.go`
- - In the server one: `go run server_api.go`
- - In the rabbitmq one: `go run rabbitmq_consumer.go`
- - In the grpc one: `go run server_grpc.go`
-
- Now the program is running, follow the instructions of the client terminal.
+The addresses of the servers can be modify with the `.env` file to run in any network (if the machines are setup properly).
