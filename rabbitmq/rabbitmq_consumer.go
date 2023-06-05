@@ -1,10 +1,11 @@
 package main
 
 import (
-	"common/models"
 	"encoding/json"
 	"log"
 	"os"
+
+	"../common/models"
 
 	"rabbitmq/rabbitDB"
 
