@@ -22,9 +22,9 @@ func main() {
 	}
 
 	var rabbitPort = os.Getenv("RABBITMQ_PORT")
-	//var rabbitHost = os.Getenv("RABBITMQ_HOST")
-	//var rabbitUsername = os.Getenv("RABBITMQ_USERNAME")
-	//var rabbitPassword = os.Getenv("RABBITMQ_PASSWORD")
+	var rabbitHost = os.Getenv("RABBITMQ_HOST")
+	var rabbitUsername = os.Getenv("RABBITMQ_USERNAME")
+	var rabbitPassword = os.Getenv("RABBITMQ_PASSWORD")
 	var rabbitQueue = os.Getenv("RABBITMQ_QUEUE_NAME")
 	var grpcHost = os.Getenv("GRPC_HOST")
 	var grpcPort = os.Getenv("GRPC_PORT")
@@ -37,7 +37,7 @@ func main() {
 	defer grpc.Close()
 
 	// Establecer conexión con RabbitMQ
-	rabbit, err := amqp.Dial("amqp://guest:guest@localhost:" + rabbitPort + "/")
+	rabbit, err := amqp.Dial("amqp://" + rabbitUsername + ":" + rabbitPassword + "@" + rabbitHost + ":" + rabbitPort + "/")
 	if err != nil {
 		log.Fatalf("Error al establecer la conexión con RabbitMQ: %v", err)
 	}
