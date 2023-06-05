@@ -1,4 +1,4 @@
-module client
+module TrustBankClient
 
 go 1.20
 

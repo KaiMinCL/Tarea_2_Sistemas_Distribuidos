@@ -45,7 +45,7 @@ func InicioSesion(URL, id, passwd string) (models.Response, error){
 	return respuesta, nil
 }
 
-func Deposito(URL, divisa, numero_cliente string, amount int) (models.Response, error){
+func Deposito(URL, divisa, numero_cliente string, amount float64) (models.Response, error){
 	var (
 		param models.ParametroDeposito
 		respuesta models.Response
@@ -62,7 +62,6 @@ func Deposito(URL, divisa, numero_cliente string, amount int) (models.Response, 
 	
 	resp, err := http.Post(URL + "/deposito", "application/json", bytes.NewBuffer(JSONString))
 	if err != nil {
-		log.Fatal(err)
 		fmt.Println("error: ", err)
         return respuesta, err
     }
@@ -81,7 +80,7 @@ func Deposito(URL, divisa, numero_cliente string, amount int) (models.Response, 
 	return respuesta, nil
 }
 
-func Transferencia(URL, origen, destino, divisa string, amount int) (models.Response, error){
+func Transferencia(URL, origen, destino, divisa string, amount float64) (models.Response, error){
 	var (
 		param models.ParametroTransferencia
 		respuesta models.Response
@@ -118,7 +117,7 @@ func Transferencia(URL, origen, destino, divisa string, amount int) (models.Resp
 	return respuesta, nil
 }
 
-func Giro(URL, numero_cliente, divisa string, amount int) (models.Response, error){
+func Giro(URL, numero_cliente, divisa string, amount float64) (models.Response, error){
 	var(
 		param models.ParametroGiro
 		respuesta models.Response

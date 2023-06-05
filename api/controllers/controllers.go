@@ -1,13 +1,11 @@
 package controllers
 
 import (
-	"api/apiDB"
+	"TrustBankAPI/apiDB"
 	"common/models"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/streadway/amqp"
@@ -146,7 +144,7 @@ func DepositHandler(c *gin.Context) {
 			return
 		}
 
-		monto, _ := strconv.ParseFloat(param_deposito.Monto, 64)
+		monto := param_deposito.Monto
 
 		// Realizar el depósito enviando un mensaje a RabbitMQ
 		movimiento := models.Movimiento{
@@ -169,15 +167,11 @@ func DepositHandler(c *gin.Context) {
 }
 
 // VerificarFondosSuficientes verifica si la billetera de origen tiene fondos suficientes para la transferencia
-func VerifyFunds(billetera models.Billetera, monto string) bool {
+func VerifyFunds(billetera models.Billetera, monto float64) bool {
 	// Convertir el saldo y el monto a números decimales
 
-	montoTransferencia, err := strconv.ParseFloat(monto, 64)
-	if err != nil {
-		log.Println("Error al convertir el monto de transferencia a número decimal:", err)
-		return false
-	}
-
+	montoTransferencia := monto
+	
 	// Verificar si el saldo es suficiente para la transferencia
 	if billetera.Saldo >= montoTransferencia {
 		return true
@@ -236,12 +230,8 @@ func TransferHandler(c *gin.Context) {
 			return
 		}
 
-		montoTransferencia, err := strconv.ParseFloat(param_transferencia.Monto, 64)
-		if err != nil {
-			log.Println("Error al convertir el monto de transferencia a número decimal:", err)
-			return
-		}
-
+		montoTransferencia := param_transferencia.Monto
+		
 		// Verificar si el saldo es suficiente para la transferencia
 		if billeteraOrigen.Saldo >= montoTransferencia {
 			return
@@ -299,7 +289,7 @@ func WithdrawHandler(c *gin.Context) {
 			return
 		}
 
-		montoGiro, err := strconv.ParseFloat(param_giro.Monto, 64)
+		montoGiro := param_giro.Monto
 
 		// Create a message payload
 		movimiento := models.Movimiento{

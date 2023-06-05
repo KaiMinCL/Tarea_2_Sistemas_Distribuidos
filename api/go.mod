@@ -1,4 +1,4 @@
-module api
+module TrustBankAPI
 
 go 1.20
 
