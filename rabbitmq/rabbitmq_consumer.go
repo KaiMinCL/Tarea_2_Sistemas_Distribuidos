@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"./common/models"
+	"../common/models"
 
 	"rabbitmq/rabbitDB"
 
