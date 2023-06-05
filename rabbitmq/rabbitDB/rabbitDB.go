@@ -4,29 +4,38 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"common/database"
-	"common/models"
+	"common/movimientos/movimientosGRPC"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc"
 )
 
-// Función para enviar una solicitud gRPC al servidor de movimientos
-/*
-func sendMovimientoRequest(client movimientos.MovimientoRequest, movimiento *movimientos.MovimientoRequest) {
-	_, err := client.RegistrarMovimiento(context.Background(), movimiento)
+func sendMovimientoRequest(connection *grpc.ClientConn, request *movimientosGRPC.MovimientoRequest) error {
+
+	// Create a new instance of the MovimientosService client
+	client := movimientosGRPC.NewMovimientosServiceClient(connection)
+
+	// Call the RegistrarMovimiento RPC on the gRPC server
+	response, err := client.RegistrarMovimiento(context.Background(), request)
 	if err != nil {
-		log.Printf("Failed to send movimiento request: %v", err)
-	} else {
-		log.Println("Movimiento request sent successfully")
+		log.Fatalf("Failed to send MovimientoRequest: %v", err)
+		return err
 	}
+
+	log.Printf("Received response: %s", response.Mensaje)
+
+	return nil
 }
-*/
 
 // Create a gRPC client connection
 func createGRPCClient() (*grpc.ClientConn, error) {
-	grpcServerAddr := "<gRPC server address>" // Replace with the actual gRPC server address
+	var grpcHost = os.Getenv("GRPC_HOST")
+	var grpcPort = os.Getenv("GRPC_PORT")
+
+	grpcServerAddr := grpcHost + ":" + grpcPort
 
 	// Dial the gRPC server
 	conn, err := grpc.Dial(grpcServerAddr, grpc.WithInsecure())
@@ -38,12 +47,35 @@ func createGRPCClient() (*grpc.ClientConn, error) {
 }
 
 func Deposit(nroCliente string, monto float64, divisa string) error {
+
 	_, collection := database.GetDatabaseCollection("Billeteras")
+
 	filter := bson.M{"nro_cliente": nroCliente}
 	update := bson.M{"$inc": bson.M{"saldo": monto}}
+
 	_, err := collection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		log.Println("Failed to update wallet in MongoDB:", err)
+		return err
+	}
+
+	// Create a new MovimientoRequest
+	request := &movimientosGRPC.MovimientoRequest{
+		NroCliente:    nroCliente,
+		Monto:         monto,
+		Divisa:        divisa,
+		TipoOperacion: "deposito",
+	}
+
+	conn, err := createGRPCClient()
+	if err != nil {
+		log.Println("Failed to connect to gRPC server:", err)
+		return err
+	}
+
+	err = sendMovimientoRequest(conn, request)
+	if err != nil {
+		log.Println("Failed to update movimientos:", err)
 		return err
 	}
 
@@ -89,66 +121,64 @@ func Transfer(nroClienteOrigen string, nroClienteDestino string, monto float64, 
 
 	session.CommitTransaction(context.Background())
 
+	// Create a new MovimientoRequest
+	request := &movimientosGRPC.MovimientoRequest{
+		NroClienteOrigen:  nroClienteOrigen,
+		NroClienteDestino: nroClienteDestino,
+		Monto:             monto,
+		Divisa:            divisa,
+		TipoOperacion:     "transferencia",
+	}
+
+	conn, err := createGRPCClient()
+	if err != nil {
+		log.Println("Failed to connect to gRPC server:", err)
+		return err
+	}
+
+	err = sendMovimientoRequest(conn, request)
+	if err != nil {
+		log.Println("Failed to update movimientos:", err)
+		return err
+	}
+
 	fmt.Printf("Transferencia en MongoDB: nroClienteOrigen=%s, nroClienteDestino=%s, monto=%f, divisa=%s\n", nroClienteOrigen, nroClienteDestino, monto, divisa)
 	return nil
 }
 
 // Función para realizar el giro en la billetera del cliente
 func Withdraw(nroCliente string, monto float64, divisa string) error {
-	// Obtener la conexión a MongoDB y la colección necesaria
-	client, collection := database.GetDatabaseCollection("Billeteras")
-	defer client.Disconnect(context.Background())
+	_, collection := database.GetDatabaseCollection("Billeteras")
 
-	// Iniciar una sesión de transacción en MongoDB
-	session, err := client.StartSession()
-	if err != nil {
-		log.Println("Failed to start MongoDB session:", err)
-		return err
-	}
-	defer session.EndSession(context.Background())
-
-	// Iniciar una transacción en la sesión
-	err = session.StartTransaction()
-	if err != nil {
-		log.Println("Failed to start MongoDB transaction:", err)
-		return err
-	}
-
-	// Obtener la billetera del cliente
 	filter := bson.M{"nro_cliente": nroCliente}
-	update := bson.M{"$inc": bson.M{"saldo": -monto}}
+	update := bson.M{"$inc": bson.M{"saldo": monto}}
 
-	_, err = collection.UpdateOne(context.Background(), filter, update)
+	_, err := collection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
-		session.AbortTransaction(context.Background())
 		log.Println("Failed to update wallet in MongoDB:", err)
 		return err
 	}
 
-	// Crear el documento del movimiento
-	movimiento := models.Movimiento{
-		NroCliente: nroCliente,
-		Monto:      monto,
-		Divisa:     divisa,
-		Tipo:       "giro",
+	// Create a new MovimientoRequest
+	request := &movimientosGRPC.MovimientoRequest{
+		NroCliente:    nroCliente,
+		Monto:         monto,
+		Divisa:        divisa,
+		TipoOperacion: "giro",
 	}
 
-	// Insertar el documento del movimiento en la colección de movimientos
-	movimientosCollection := client.Database("TrustBank").Collection("movimientos")
-	_, err = movimientosCollection.InsertOne(context.Background(), movimiento)
+	conn, err := createGRPCClient()
 	if err != nil {
-		session.AbortTransaction(context.Background())
-		log.Println("Failed to insert movement in MongoDB:", err)
+		log.Println("Failed to connect to gRPC server:", err)
 		return err
 	}
 
-	// Confirmar la transacción en MongoDB
-	err = session.CommitTransaction(context.Background())
+	err = sendMovimientoRequest(conn, request)
 	if err != nil {
-		log.Println("Failed to commit MongoDB transaction:", err)
+		log.Println("Failed to update movimientos:", err)
 		return err
 	}
 
-	log.Printf("Giro en MongoDB: nroCliente=%s, monto=%f, divisa=%s\n", nroCliente, monto, divisa)
+	fmt.Printf("Giro en MongoDB: nroCliente=%s, monto=%f, divisa=%s\n", nroCliente, monto, divisa)
 	return nil
 }

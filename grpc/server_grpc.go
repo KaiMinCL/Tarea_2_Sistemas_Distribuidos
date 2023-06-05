@@ -7,7 +7,8 @@ import (
 	"os"
 	"time"
 
-	pb "common/movimientos/grpc"
+	"common/database"
+	pb "common/movimientos/movimientosgRPC"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
@@ -42,13 +43,37 @@ func (s *server) RegistrarMovimiento(ctx context.Context, req *pb.MovimientoRequ
 	db := client.Database("TrustBank")
 	collection := db.Collection("Movimientos")
 
-	// Crear el documento para insertar en MongoDB
-	movimiento := bson.M{
-		"nro_cliente_origen":  req.GetNroClienteOrigen(),
-		"nro_cliente_destino": req.GetNroClienteDestino(),
-		"monto":               req.GetMonto(),
-		"divisa":              req.GetDivisa(),
-		"tipo_operacion":      req.GetTipoOperacion(),
+	var movimiento = bson.M{}
+
+	if req.TipoOperacion == "deposito" || req.TipoOperacion == "giro" {
+		billetera, _ := database.GetWallet(req.NroCliente, req.Divisa)
+
+		// Crear el documento para insertar en MongoDB
+		movimiento = bson.M{
+			"nro_cliente":    req.GetNroCliente(),
+			"monto":          req.GetMonto(),
+			"divisa":         req.GetDivisa(),
+			"tipo_operacion": req.GetTipoOperacion(),
+			"fecha_hora":     time.Now(),
+			"id_billetera":   billetera.Id,
+		}
+
+	} else {
+		billeteraOrigen, _ := database.GetWallet(req.NroClienteOrigen, req.Divisa)
+
+		billeteraDestino, _ := database.GetWallet(req.NroClienteDestino, req.Divisa)
+
+		// Crear el documento para insertar en MongoDB
+		movimiento = bson.M{
+			"nro_cliente_origen":   req.GetNroClienteOrigen(),
+			"nro_cliente_destino":  req.GetNroClienteDestino(),
+			"monto":                req.GetMonto(),
+			"divisa":               req.GetDivisa(),
+			"tipo_operacion":       req.GetTipoOperacion(),
+			"fecha_hora":           time.Now(),
+			"id_billetera_origen":  billeteraOrigen.Id,
+			"id_billetera_destino": billeteraDestino.Id,
+		}
 	}
 
 	// Insertar el documento en la colección
@@ -56,6 +81,8 @@ func (s *server) RegistrarMovimiento(ctx context.Context, req *pb.MovimientoRequ
 	if err != nil {
 		log.Fatalf("Error al insertar el movimiento en MongoDB: %v", err)
 	}
+
+	log.Printf("Movimiento almacenado: " + req.GetTipoOperacion())
 
 	return &pb.MovimientoResponse{Mensaje: "Movimiento registrado exitosamente"}, nil
 }

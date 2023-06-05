@@ -25,17 +25,6 @@ func main() {
 	var rabbitUsername = os.Getenv("RABBITMQ_USERNAME")
 	var rabbitPassword = os.Getenv("RABBITMQ_PASSWORD")
 	var rabbitQueue = os.Getenv("RABBITMQ_QUEUE_NAME")
-	//var grpcHost = os.Getenv("GRPC_HOST")
-	//var grpcPort = os.Getenv("GRPC_PORT")
-
-	/*// Configurar la conexión gRPC
-	grpc, err := grpc.Dial(grpcHost+":"+grpcPort, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Failed to connect to gRPC server: %v", err)
-	}
-	defer grpc.Close()
-	*/
-	// Establecer conexión con RabbitMQ
 
 	rabbit, err := amqp.Dial("amqp://" + rabbitUsername + ":" + rabbitPassword + "@" + rabbitHost + ":" + rabbitPort + "/")
 	if err != nil {

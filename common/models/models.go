@@ -31,15 +31,17 @@ type Billetera struct {
 }
 
 type Movimiento struct {
-	Id                primitive.ObjectID `bson:"_id" json:"id"`
-	NroCliente        string             `bson:"nro_cliente" json:"nro_cliente"`
-	NroClienteOrigen  string             `json:"nro_cliente_origen"`
-	NroClienteDestino string             `json:"nro_cliente_destino"`
-	Monto             float64            `bson:"monto" json:"monto"`
-	Divisa            string             `bson:"divisa" json:"divisa"`
-	Tipo              string             `bson:"tipo" json:"tipo"`
-	Fecha_hora        string             `bson:"fecha_hora" json:"fecha_hora"`
-	IdBilletera       primitive.ObjectID `bson:"id_billetera" json:"id_billetera"`
+	Id                 primitive.ObjectID `bson:"_id" json:"id"`
+	NroCliente         string             `bson:"nro_cliente" json:"nro_cliente"`
+	NroClienteOrigen   string             `json:"nro_cliente_origen"`
+	NroClienteDestino  string             `json:"nro_cliente_destino"`
+	Monto              float64            `bson:"monto" json:"monto"`
+	Divisa             string             `bson:"divisa" json:"divisa"`
+	Tipo               string             `bson:"tipo" json:"tipo"`
+	Fecha_hora         string             `bson:"fecha_hora" json:"fecha_hora"`
+	IdBilletera        primitive.ObjectID `bson:"id_billetera" json:"id_billetera"`
+	IdBilleteraOrigen  primitive.ObjectID `bson:"id_billetera_origen" json:"id_billetera_origen"`
+	IdBilleteraDestino primitive.ObjectID `bson:"id_billetera_destino" json:"id_billetera_destino"`
 }
 
 type ParametroCliente struct {

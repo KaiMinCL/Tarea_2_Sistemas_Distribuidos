@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"TrustBankAPI/apiDB"
+	"common/database"
 	"common/models"
 	"encoding/json"
 	"fmt"
@@ -244,14 +245,14 @@ func TransferHandler(c *gin.Context) {
 		}
 
 		// Obtener la billetera del cliente de origen
-		billeteraOrigen, err := apiDB.GetWallet(param_transferencia.NroClienteOrigen, param_transferencia.Divisa)
+		billeteraOrigen, err := database.GetWallet(param_transferencia.NroClienteOrigen, param_transferencia.Divisa)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_origen_no_encontrada"})
 			return
 		}
 
 		// Obtener la billetera del cliente de destino
-		_, err = apiDB.GetWallet(param_transferencia.NroClienteDestino, param_transferencia.Divisa)
+		_, err = database.GetWallet(param_transferencia.NroClienteDestino, param_transferencia.Divisa)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_destino_no_encontrada"})
 			return
@@ -309,7 +310,7 @@ func WithdrawHandler(c *gin.Context) {
 		}
 
 		// Obtener la billetera del cliente
-		billetera, err := apiDB.GetWallet(param_giro.NroCliente, param_giro.Divisa)
+		billetera, err := database.GetWallet(param_giro.NroCliente, param_giro.Divisa)
 		if err != nil {
 			c.JSON(http.StatusNotFound, models.Response{Estado: "billetera_no_encontrada"})
 			return
