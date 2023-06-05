@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package movimientos;
+
+option go_package = "./movimientosGRPC";
+
+service MovimientosService {
+  rpc RegistrarMovimiento(MovimientoRequest) returns (MovimientoResponse){}
+}
+
+message MovimientoRequest {
+  string nro_cliente = 1;
+  string nro_cliente_origen = 2;
+  string nro_cliente_destino = 3;
+  double monto = 4;
+  string divisa = 5;
+  string tipo_operacion = 6;
+}
+
+message MovimientoResponse {
+  string mensaje = 1;
+}
+
