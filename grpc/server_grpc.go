@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"common/database"
-	pb "common/movimientos/movimientosgRPC"
+	pb "common/movimientos/movimientosGRPC"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"

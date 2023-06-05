@@ -1,5 +1,4 @@
-module RabbitMQWallet
-
+module rabbitmq
 go 1.20
 
 require (

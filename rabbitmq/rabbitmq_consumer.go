@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"RabbitMQWallet/rabbitDB"
+	"rabbitmq/rabbitDB"
 
 	"github.com/joho/godotenv"
 	"github.com/streadway/amqp"
